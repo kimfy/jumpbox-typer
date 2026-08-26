@@ -1,10 +1,11 @@
 use crate::ocr::{run_ocr_file, temporary_ocr_image_path};
+use crate::platform::{prepare_typing, AccessRequest};
 use crate::settings::{load_app_config, read_app_config, read_config, save_app_config};
-use crate::system_check::{ensure_ydotool_ready, queue_system_check, require_command};
-use crate::ui::dialogs::{show_about_window, show_system_check_popup};
-use crate::ui::widgets::{action_row, numeric_entry};
+use crate::system_check::{queue_system_check, require_command};
 use crate::types::{AppState, SystemCheck, UiEvent};
 use crate::typing::{progress_fraction, run_typing};
+use crate::ui::dialogs::{show_about_window, show_system_check_popup};
+use crate::ui::widgets::{action_row, numeric_entry};
 use adw::prelude::*;
 use adw::{Application, ApplicationWindow, HeaderBar, ToolbarView};
 use gtk::glib;
@@ -102,7 +103,11 @@ pub fn build_ui(app: &Application) {
         .title("Typing Settings")
         .description("Tune the delay and typing pace for the target remote session")
         .build();
-    settings.add(&action_row("Start Delay", "Seconds before typing begins", &delay));
+    settings.add(&action_row(
+        "Start Delay",
+        "Seconds before typing begins",
+        &delay,
+    ));
     settings.add(&action_row("Typing Speed", "Characters per second", &speed));
     settings.add(&action_row(
         "Enter Pause",
@@ -168,7 +173,9 @@ pub fn build_ui(app: &Application) {
         let keyboard_layout = keyboard_layout.clone();
 
         delay_for_signal.connect_changed(move |_| {
-            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+            if let Ok(config) =
+                read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected())
+            {
                 save_app_config(&config);
             }
         });
@@ -182,7 +189,9 @@ pub fn build_ui(app: &Application) {
         let keyboard_layout = keyboard_layout.clone();
 
         speed_for_signal.connect_changed(move |_| {
-            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+            if let Ok(config) =
+                read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected())
+            {
                 save_app_config(&config);
             }
         });
@@ -196,7 +205,9 @@ pub fn build_ui(app: &Application) {
         let keyboard_layout = keyboard_layout.clone();
 
         enter_pause_for_signal.connect_changed(move |_| {
-            if let Ok(config) = read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected()) {
+            if let Ok(config) =
+                read_app_config(&delay, &speed, &enter_pause, keyboard_layout.selected())
+            {
                 save_app_config(&config);
             }
         });
@@ -215,7 +226,7 @@ pub fn build_ui(app: &Application) {
         });
     }
 
-    queue_system_check(tx.clone());
+    queue_system_check(tx.clone(), AccessRequest::CheckOnly);
 
     {
         let state = Rc::clone(&state);
@@ -250,7 +261,7 @@ pub fn build_ui(app: &Application) {
                 }
             };
 
-            if let Err(message) = ensure_ydotool_ready() {
+            if let Err(message) = prepare_typing() {
                 status.set_text(&message);
                 return;
             }
@@ -384,7 +395,7 @@ pub fn build_ui(app: &Application) {
             check_system_for_callback.set_sensitive(false);
             latest_check.borrow_mut().take();
             show_check_popup_on_finish.set(true);
-            queue_system_check(tx.clone());
+            queue_system_check(tx.clone(), AccessRequest::RequestIfNeeded);
         });
     }
 
