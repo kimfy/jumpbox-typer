@@ -17,6 +17,10 @@ pub(super) fn check_system(_access_request: AccessRequest) -> SystemCheck {
     build_system_check(ydotool, tesseract, socket_status, uinput_status)
 }
 
+pub(super) const fn recheck_readiness_on_activation() -> bool {
+    false
+}
+
 fn build_system_check(
     ydotool: bool,
     tesseract: bool,

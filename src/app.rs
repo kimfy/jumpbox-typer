@@ -1,5 +1,5 @@
 use crate::ocr::{run_ocr_file, temporary_ocr_image_path};
-use crate::platform::{prepare_typing, AccessRequest};
+use crate::platform::{prepare_typing, recheck_readiness_on_activation, AccessRequest};
 use crate::settings::{load_app_config, read_app_config, read_config, save_app_config};
 use crate::system_check::{queue_system_check, require_command};
 use crate::types::{AppState, SystemCheck, UiEvent};
@@ -226,6 +226,15 @@ pub fn build_ui(app: &Application) {
         });
     }
 
+    if recheck_readiness_on_activation() {
+        let tx = tx.clone();
+        app.connect_active_window_notify(move |app| {
+            if app.active_window().is_some() {
+                queue_system_check(tx.clone(), AccessRequest::CheckOnly);
+            }
+        });
+    }
+
     queue_system_check(tx.clone(), AccessRequest::CheckOnly);
 
     {
@@ -261,7 +270,9 @@ pub fn build_ui(app: &Application) {
                 }
             };
 
+            start_for_callback.set_sensitive(false);
             if let Err(message) = prepare_typing() {
+                state.borrow_mut().can_type = false;
                 status.set_text(&message);
                 return;
             }
@@ -277,7 +288,6 @@ pub fn build_ui(app: &Application) {
                 state.cancel = Some(Arc::clone(&cancel));
             }
 
-            start_for_callback.set_sensitive(false);
             stop.set_sensitive(true);
             progress.set_fraction(0.0);
             status.set_text(&format!(

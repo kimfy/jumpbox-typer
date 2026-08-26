@@ -14,6 +14,10 @@ pub(super) fn check_system(_access_request: AccessRequest) -> SystemCheck {
     }
 }
 
+pub(super) const fn recheck_readiness_on_activation() -> bool {
+    false
+}
+
 pub(super) fn prepare_typing() -> Result<(), String> {
     Err("typing is not supported on this operating system yet".to_string())
 }
