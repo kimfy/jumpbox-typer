@@ -1,10 +1,10 @@
 use super::AccessRequest;
+use crate::ocr::tesseract_available;
 use crate::types::{KeyboardLayout, SystemCheck, SystemCheckItem};
 use objc2_core_graphics::{
     CGEvent, CGEventFlags, CGEventSource, CGEventSourceStateID, CGEventTapLocation,
     CGPreflightPostEventAccess, CGRequestPostEventAccess,
 };
-use std::process::Command;
 
 pub(super) fn check_system(access_request: AccessRequest) -> SystemCheck {
     let posting_access = posting_access(
@@ -12,10 +12,7 @@ pub(super) fn check_system(access_request: AccessRequest) -> SystemCheck {
         || CGPreflightPostEventAccess(),
         || CGRequestPostEventAccess(),
     );
-    let tesseract = Command::new("tesseract")
-        .arg("--version")
-        .output()
-        .is_ok_and(|output| output.status.success());
+    let tesseract = tesseract_available();
 
     build_system_check(posting_access, tesseract)
 }

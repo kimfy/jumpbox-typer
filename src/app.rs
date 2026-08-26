@@ -1,7 +1,7 @@
-use crate::ocr::{run_ocr_file, temporary_ocr_image_path};
+use crate::ocr::{resolve_tesseract, run_ocr_file, temporary_ocr_image_path};
 use crate::platform::{prepare_typing, recheck_readiness_on_activation, AccessRequest};
 use crate::settings::{load_app_config, read_app_config, read_config, save_app_config};
-use crate::system_check::{queue_system_check, require_command};
+use crate::system_check::queue_system_check;
 use crate::types::{AppState, SystemCheck, UiEvent};
 use crate::typing::{progress_fraction, run_typing};
 use crate::ui::dialogs::{show_about_window, show_system_check_popup};
@@ -327,13 +327,13 @@ pub fn build_ui(app: &Application) {
         let clipboard = window.clipboard();
 
         extract_clipboard_image.connect_clicked(move |_| {
-            if let Err(message) = require_command(
-                "tesseract",
-                "tesseract OCR is required: sudo apt install tesseract-ocr",
-            ) {
-                status.set_text(&message);
-                return;
-            }
+            let tesseract_path = match resolve_tesseract() {
+                Ok(path) => path,
+                Err(message) => {
+                    status.set_text(&message);
+                    return;
+                }
+            };
 
             status.set_text("Reading image from clipboard...");
             extract_clipboard_image_for_callback.set_sensitive(false);
@@ -369,7 +369,7 @@ pub fn build_ui(app: &Application) {
                 }
 
                 thread::spawn(move || {
-                    let event = match run_ocr_file(image_path) {
+                    let event = match run_ocr_file(tesseract_path, image_path) {
                         Ok(text) if text.trim().is_empty() => UiEvent::OcrFinished {
                             status: "No text found in clipboard image.".to_string(),
                             text: None,

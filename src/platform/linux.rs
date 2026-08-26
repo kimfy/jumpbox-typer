@@ -1,4 +1,5 @@
 use super::AccessRequest;
+use crate::ocr::tesseract_available;
 use crate::system_check::command_stderr;
 use crate::types::{KeyboardLayout, SystemCheck, SystemCheckItem};
 use std::env;
@@ -10,7 +11,7 @@ use std::time::Duration;
 
 pub(super) fn check_system(_access_request: AccessRequest) -> SystemCheck {
     let ydotool = command_available("ydotool", "--help");
-    let tesseract = command_available("tesseract", "--version");
+    let tesseract = tesseract_available();
     let socket_status = ydotool_socket_status();
     let uinput_status = uinput_status();
 
