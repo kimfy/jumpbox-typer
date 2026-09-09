@@ -1,4 +1,5 @@
-use crate::ocr::{resolve_tesseract, run_ocr_file, temporary_ocr_image_path};
+use crate::clipboard::copied_image_file;
+use crate::ocr::{resolve_tesseract, run_ocr_file, run_ocr_source_file, temporary_ocr_image_path};
 use crate::platform::{prepare_typing, recheck_readiness_on_activation, AccessRequest};
 use crate::settings::{load_app_config, read_app_config, read_config, save_app_config};
 use crate::system_check::queue_system_check;
@@ -20,6 +21,39 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+
+enum OcrInput {
+    SourceFile(std::path::PathBuf),
+    TemporaryFile(std::path::PathBuf),
+}
+
+fn queue_ocr(tx: mpsc::Sender<UiEvent>, tesseract_path: std::path::PathBuf, input: OcrInput) {
+    thread::spawn(move || {
+        let result = match input {
+            OcrInput::SourceFile(path) => run_ocr_source_file(tesseract_path, path),
+            OcrInput::TemporaryFile(path) => run_ocr_file(tesseract_path, path),
+        };
+        let event = match result {
+            Ok(text) if text.trim().is_empty() => UiEvent::OcrFinished {
+                status: "No text found in clipboard image.".to_string(),
+                text: None,
+            },
+            Ok(text) => {
+                let character_count = text.chars().count();
+                UiEvent::OcrFinished {
+                    status: format!("Inserted {character_count} OCR characters."),
+                    text: Some(text),
+                }
+            }
+            Err(message) => UiEvent::OcrFinished {
+                status: message,
+                text: None,
+            },
+        };
+
+        let _ = tx.send(event);
+    });
+}
 
 pub fn build_ui(app: &Application) {
     let stored_config = load_app_config();
@@ -339,6 +373,21 @@ pub fn build_ui(app: &Application) {
             extract_clipboard_image_for_callback.set_sensitive(false);
 
             let worker_tx = tx.clone();
+            match copied_image_file() {
+                Ok(Some(image_path)) => {
+                    queue_ocr(worker_tx, tesseract_path, OcrInput::SourceFile(image_path));
+                    return;
+                }
+                Ok(None) => {}
+                Err(message) => {
+                    let _ = worker_tx.send(UiEvent::OcrFinished {
+                        status: message,
+                        text: None,
+                    });
+                    return;
+                }
+            }
+
             clipboard.read_texture_async(None::<&gtk::gio::Cancellable>, move |result| {
                 let texture = match result {
                     Ok(Some(texture)) => texture,
@@ -368,27 +417,11 @@ pub fn build_ui(app: &Application) {
                     return;
                 }
 
-                thread::spawn(move || {
-                    let event = match run_ocr_file(tesseract_path, image_path) {
-                        Ok(text) if text.trim().is_empty() => UiEvent::OcrFinished {
-                            status: "No text found in clipboard image.".to_string(),
-                            text: None,
-                        },
-                        Ok(text) => {
-                            let character_count = text.chars().count();
-                            UiEvent::OcrFinished {
-                                status: format!("Inserted {character_count} OCR characters."),
-                                text: Some(text),
-                            }
-                        }
-                        Err(message) => UiEvent::OcrFinished {
-                            status: message,
-                            text: None,
-                        },
-                    };
-
-                    let _ = worker_tx.send(event);
-                });
+                queue_ocr(
+                    worker_tx,
+                    tesseract_path,
+                    OcrInput::TemporaryFile(image_path),
+                );
             });
         });
     }

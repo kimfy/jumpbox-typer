@@ -60,14 +60,21 @@ const fn tesseract_install_message() -> &'static str {
 }
 
 pub fn run_ocr_file(tesseract_path: PathBuf, image_path: PathBuf) -> Result<String, String> {
+    let result = run_ocr_source_file(tesseract_path, image_path.clone());
+    let _ = fs::remove_file(&image_path);
+    result
+}
+
+pub(crate) fn run_ocr_source_file(
+    tesseract_path: PathBuf,
+    image_path: PathBuf,
+) -> Result<String, String> {
     let ocr_output = Command::new(tesseract_path)
         .args(["--psm", "6", "-c", "preserve_interword_spaces=1"])
         .arg(&image_path)
         .arg("stdout")
         .output()
         .map_err(|err| format!("failed to run tesseract: {err}"));
-
-    let _ = fs::remove_file(&image_path);
 
     let ocr_output = ocr_output?;
     if !ocr_output.status.success() {
@@ -172,6 +179,35 @@ mod tests {
 
         assert_eq!(text, "recognized text\n");
         assert!(!image.exists());
+    }
+
+    #[test]
+    fn source_image_is_preserved_after_success() {
+        let directory = TestDirectory::new("source-success");
+        let executable = directory.path().join("tesseract");
+        let image = directory.path().join("source.png");
+        make_fake_tesseract(&executable, "printf 'recognized text\\n'");
+        fs::write(&image, "fake image").expect("source image must be written");
+
+        let text = run_ocr_source_file(executable, image.clone()).expect("OCR must succeed");
+
+        assert_eq!(text, "recognized text\n");
+        assert!(image.exists());
+    }
+
+    #[test]
+    fn source_image_is_preserved_after_tesseract_failure() {
+        let directory = TestDirectory::new("source-failure");
+        let executable = directory.path().join("tesseract");
+        let image = directory.path().join("source.png");
+        make_fake_tesseract(&executable, "printf 'engine broke\\n' >&2; exit 7");
+        fs::write(&image, "fake image").expect("source image must be written");
+
+        let error = run_ocr_source_file(executable, image.clone())
+            .expect_err("Tesseract failure must be reported");
+
+        assert!(error.contains("engine broke"));
+        assert!(image.exists());
     }
 
     #[test]

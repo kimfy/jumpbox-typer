@@ -1,4 +1,5 @@
 pub mod app;
+mod clipboard;
 mod command;
 pub mod ocr;
 pub mod platform;
