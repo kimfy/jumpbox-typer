@@ -345,6 +345,17 @@ mod tests {
     }
 
     #[test]
+    fn default_typing_speed_matches_the_platform() {
+        let expected = if cfg!(target_os = "macos") {
+            60.0
+        } else {
+            18.0
+        };
+
+        assert_eq!(AppConfig::default().chars_per_second, expected);
+    }
+
+    #[test]
     fn load_app_config_reads_saved_values() {
         let config_path = unique_temp_path("app-config");
         let legacy_path = unique_temp_path("legacy-layout");
