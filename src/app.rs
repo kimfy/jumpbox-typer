@@ -116,7 +116,7 @@ pub fn build_ui(app: &Application) {
     ));
     settings.add(&action_row(
         "Keyboard Layout",
-        "Choose the layout used for special characters",
+        "Match this layout to the active system input source",
         &keyboard_layout,
     ));
 
