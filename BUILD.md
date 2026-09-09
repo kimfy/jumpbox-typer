@@ -1,39 +1,57 @@
 # Build
 
-## Requirements
+## Linux requirements
 
 - Rust toolchain
 - GTK 4 development package
 - Libadwaita development package
 - `pkg-config`
+- Tesseract OCR
 
 On Ubuntu:
 
 ```bash
-sudo apt install cargo rustc gcc pkg-config libgtk-4-dev libadwaita-1-dev
+sudo apt install cargo rustc gcc pkg-config libgtk-4-dev libadwaita-1-dev tesseract-ocr
 ```
 
-## Build From Source
+## macOS requirements
+
+The local macOS bundle supports macOS 14 or later on Apple Silicon.
+
+Install the required Homebrew packages:
 
 ```bash
-cargo build --release
+brew install rust pkg-config gtk4 libadwaita tesseract librsvg
 ```
 
-The binary will be at:
+The build script checks each dependency. The script does not install or change Homebrew packages.
 
-```bash
-target/release/jumpbox-typer
-```
-
-Or run:
+## Build from source
 
 ```bash
 ./build.sh
 ```
 
-The build script writes `dist/jumpbox-typer-linux-amd64` and packages the icon asset under `dist/assets/`.
+On Linux, the script creates these files:
 
-## Install
+```bash
+dist/jumpbox-typer-linux-amd64
+dist/assets/jumpbox-typer.svg
+```
+
+On macOS, the script creates this application bundle:
+
+```bash
+dist/Jumpbox Typer.app
+```
+
+The script generates the application icon from `assets/jumpbox-typer.svg`. It validates the property list and ad-hoc signs the bundle.
+
+The macOS bundle links to the Homebrew libraries on the build Mac. It is not a portable, notarized release.
+
+Tesseract stays outside the bundle. The application searches its inherited `PATH`, `/opt/homebrew/bin`, and `/usr/local/bin`.
+
+## Install on Linux
 
 ```bash
 ./install.sh
@@ -58,3 +76,23 @@ With `PREFIX` set, the installer copies:
 - the app icon to `share/icons/hicolor/scalable/apps/dev.sander.jumpbox_typer.svg`
 - the desktop entry to `share/applications/dev.sander.jumpbox_typer.desktop`
 - the AppStream metadata to `share/metainfo/dev.sander.jumpbox_typer.metainfo.xml`
+
+## Install on macOS
+
+Run the local installer:
+
+```bash
+./install.sh
+```
+
+The installer builds the bundle and copies it to `~/Applications/Jumpbox Typer.app`.
+
+Set `APP_DIR` to use a different application directory:
+
+```bash
+APP_DIR=/Applications ./install.sh
+```
+
+The installer replaces only `Jumpbox Typer.app` in the selected directory. It does not change other applications or user data.
+
+macOS can require Accessibility permission again after you replace an ad-hoc signed development build. Use Check System to request permission.
