@@ -18,6 +18,8 @@ sudo apt install cargo rustc gcc pkg-config libgtk-4-dev libadwaita-1-dev tesser
 
 The local macOS bundle supports macOS 14 or later on Apple Silicon.
 
+Building requires Rust, package configuration through `pkg-config`, GTK 4, libadwaita, Tesseract, and librsvg for icon generation.
+
 Install the required Homebrew packages:
 
 ```bash
@@ -50,6 +52,20 @@ The script generates the application icon from `assets/jumpbox-typer.svg`. It va
 The macOS bundle links to the Homebrew libraries on the build Mac. It is not a portable, notarized release.
 
 Tesseract stays outside the bundle. The application searches its inherited `PATH`, `/opt/homebrew/bin`, and `/usr/local/bin`.
+
+## Verify a change
+
+Run the same complete feedback loop used by continuous integration:
+
+```bash
+./scripts/verify.sh
+```
+
+The script checks Rust formatting, runs all-target tests and compilation checks, runs Clippy with warnings denied, tests the packaging workflows, and creates the host release artifact. Run it on both Linux and macOS when reproducing cross-platform verification. The repository workflow runs it on Ubuntu 24.04 and an Apple Silicon macOS 14 runner.
+
+On Linux, the final build proves that the existing Linux executable artifact can still be produced. On macOS, `build.sh` validates bundle metadata with `plutil` and verifies the local ad-hoc signature with `codesign`. Automated tests do not request keyboard-event permission or send system-wide keystrokes.
+
+Finder-launched GUI and OCR behavior still require manual verification because Finder uses the installed application identity and can provide a different environment from a terminal launch.
 
 ## Install on Linux
 
