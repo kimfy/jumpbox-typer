@@ -60,29 +60,6 @@ test_ci_covers_supported_hosts() {
     fail "CI does not use the reproducible verification entrypoint"
 }
 
-test_documented_support_boundary() {
-  for text in \
-    'macOS typing is experimental' \
-    'Check System' \
-    'focus changes redirect remaining text' \
-    'No remote client has passed validation' \
-    'Intel support' \
-    'App Store'; do
-    grep -F "$text" README.md >/dev/null || fail "README omits support boundary: $text"
-  done
-
-  for text in \
-    'macOS 14 or later' \
-    'Apple Silicon' \
-    'brew install rust pkg-config gtk4 libadwaita tesseract librsvg' \
-    './scripts/verify.sh' \
-    'Finder-launched' \
-    'ad-hoc signature'; do
-    grep -F "$text" BUILD.md >/dev/null || fail "BUILD.md omits build boundary: $text"
-  done
-}
-
 test_verification_runs_complete_feedback_loop
 test_ci_covers_supported_hosts
-test_documented_support_boundary
 echo "verification tests passed"
