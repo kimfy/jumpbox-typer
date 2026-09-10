@@ -82,7 +82,10 @@ test_darwin_install_copies_bundle_to_override() {
   printf '%s\n' '#!/usr/bin/env sh' 'exit 0' >"$project/build.sh"
   printf '%s\n' '#!/usr/bin/env sh' 'echo app' >"$project/dist/Jumpbox Typer.app/Contents/MacOS/jumpbox-typer"
   printf '%s\n' '#!/usr/bin/env sh' 'echo Darwin' >"$fake_bin/uname"
-  chmod +x "$project/build.sh" "$fake_bin/uname"
+  printf '%s\n' \
+    '#!/usr/bin/env sh' \
+    'cp -R "$1" "$2"' >"$fake_bin/ditto"
+  chmod +x "$project/build.sh" "$fake_bin/uname" "$fake_bin/ditto"
 
   (
     cd "$project"
